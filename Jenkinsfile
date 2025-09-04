@@ -1,7 +1,7 @@
 pipeline {
     agent any
 
-    tools { myGo '1.23' }
+    // tools { myGo '1.23' }
 
     environment {
         goHome = tool 'myGo' // pastikan sudah ada konfigurasi Go di Jenkins
