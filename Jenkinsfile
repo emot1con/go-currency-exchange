@@ -54,24 +54,24 @@ pipeline {
             }
         }
 
-        // stage("Build Docker Image") {
-        //     steps {
-        //         script {
-        //             dockerImage = docker.build("numpyh/currency-exchange:${env.BUILD_ID}")
-        //         }
-        //     }
-        // }
+        stage("Build Docker Image") {
+            steps {
+                script {
+                    dockerImage = docker.build("numpyh/currency-exchange:${env.BUILD_ID}")
+                }
+            }
+        }
 
-        // stage("Push Docker Image") {
-        //     steps {
-        //         script {
-        //             docker.withRegistry('', 'dockerhub') {
-        //                 dockerImage.push()
-        //                 dockerImage.push('latest')
-        //             }
-        //         }
-        //     }
-        // }
+        stage("Push Docker Image") {
+            steps {
+                script {
+                    docker.withRegistry('', 'dockerhub') {
+                        dockerImage.push()
+                        dockerImage.push('latest')
+                    }
+                }
+            }
+        }
     }
 
     post {
