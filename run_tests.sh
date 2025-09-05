@@ -13,7 +13,7 @@ go test ./internal/service -bench=. -benchmem
 echo
 echo "3. Running Integration Tests (requires server to be stopped)..."
 echo "To run integration tests with a live server, use:"
-echo "INTEGRATION=1 go test -run TestIntegrationOnly -v"
+INTEGRATION=1 go test -run TestIntegrationOnly -v
 
 echo
 echo "4. Code Coverage..."
