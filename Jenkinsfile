@@ -29,35 +29,51 @@ pipeline {
                     },
                     "Integration Tests": {
                         echo "=== Running Integration Tests ==="
-                        sh """
-                        # Clean up any existing container
-                        docker stop currency-exchange-test || true
-                        docker rm currency-exchange-test || true
-                        
-                        # Build a local image for testing
-                        docker build -t currency-exchange-test:latest .
-                        
-                        # Run the container
-                        docker run -d --name currency-exchange-test -p 8080:8080 currency-exchange-test:latest
-                        
-                        # Wait longer for the service to be ready
-                        echo "Waiting for service to start..."
-                        sleep 10
-                        
-                        # Check if container is running
-                        docker ps | grep currency-exchange-test
-                        
-                        # Check container logs for any startup issues
-                        echo "=== Container Logs ==="
-                        docker logs currency-exchange-test
-                        
-                        # Test if the service is responding
-                        echo "=== Testing Service Health ==="
-                        curl -f http://localhost:8080/health || echo "Health check failed"
-                        
-                        # Run integration tests
-                        INTEGRATION=1 go test -run TestIntegrationOnly -v
-                        """
+                        script {
+                            try {
+                                // Build test Docker image
+                                echo "Building test Docker image..."
+                                sh "docker build -t currency-exchange-test:${env.BUILD_NUMBER} ."
+                                
+                                // Start container for testing
+                                echo "Starting container for integration tests..."
+                                sh """
+                                docker run -d --name currency-exchange-test-${env.BUILD_NUMBER} \
+                                    -p 8080:8080 \
+                                    currency-exchange-test:${env.BUILD_NUMBER}
+                                """
+                                
+                                // Wait for service to be ready
+                                echo "Waiting for service to be ready..."
+                                sh """
+                                timeout 60s bash -c 'while ! curl -f http://localhost:8080/health; do sleep 2; done' || {
+                                    echo "Service failed to start within 60 seconds"
+                                    docker logs currency-exchange-test-${env.BUILD_NUMBER}
+                                    exit 1
+                                }
+                                """
+                                
+                                // Run integration tests
+                                echo "Running integration tests..."
+                                sh """
+                                export BASE_URL=http://localhost:8080
+                                export INTEGRATION=1
+                                go test -run TestCurrencyExchangeServiceIntegration -v -timeout 5m
+                                """
+                                
+                            } catch (Exception e) {
+                                echo "Integration tests failed: ${e.getMessage()}"
+                                throw e
+                            } finally {
+                                // Always cleanup test container
+                                echo "Cleaning up test container..."
+                                sh """
+                                docker stop currency-exchange-test-${env.BUILD_NUMBER} || true
+                                docker rm currency-exchange-test-${env.BUILD_NUMBER} || true
+                                docker rmi currency-exchange-test:${env.BUILD_NUMBER} || true
+                                """
+                            }
+                        }
                     },
                     "Coverage": {
                         echo "Running Code Coverage"
