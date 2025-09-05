@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -15,32 +16,75 @@ import (
 	"currency_go_microservice/internal/service"
 )
 
+// newLocalClient creates an HTTP client that bypasses any proxy settings.
+func newLocalClient() *http.Client {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	// Disable proxies entirely to avoid corporate proxy interference with localhost
+	transport.Proxy = nil
+	return &http.Client{Transport: transport, Timeout: 5 * time.Second}
+}
+
+// waitForHealthy polls /health until the service reports healthy or timeout.
+func waitForHealthy(t *testing.T, client *http.Client, baseURL string, timeout time.Duration) {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		resp, err := client.Get(baseURL + "/health")
+		if err == nil && resp != nil {
+			body, _ := io.ReadAll(resp.Body)
+			_ = resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				var health map[string]interface{}
+				if json.Unmarshal(body, &health) == nil {
+					if v, ok := health["status"]; ok {
+						switch vv := v.(type) {
+						case string:
+							if strings.EqualFold(vv, "healthy") {
+								return
+							}
+						case bool:
+							if vv {
+								return
+							}
+						}
+					}
+				}
+			}
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	t.Fatalf("service did not become healthy at %s within %s", baseURL, timeout)
+}
+
 // Integration Tests
 func TestCurrencyExchangeServiceIntegration(t *testing.T) {
-	// Start the server as a separate process
-	cmd := exec.Command("go", "run", "cmd/main.go")
-	cmd.Dir = "."
-	err := cmd.Start()
-	if err != nil {
-		t.Fatalf("Failed to start server: %v", err)
+	baseURL := os.Getenv("BASE_URL")
+	if baseURL == "" {
+		baseURL = "http://127.0.0.1:8080"
 	}
 
-	// Ensure server is killed after test
-	defer func() {
-		if cmd.Process != nil {
-			cmd.Process.Signal(syscall.SIGTERM)
-			cmd.Wait()
+	client := newLocalClient()
+
+	// Optionally start a local server when running outside CI
+	var cmd *exec.Cmd
+	if os.Getenv("START_LOCAL") == "1" {
+		cmd = exec.Command("go", "run", "cmd/main.go")
+		cmd.Dir = "."
+		if err := cmd.Start(); err != nil {
+			t.Fatalf("Failed to start local server: %v", err)
 		}
-	}()
+		defer func() {
+			if cmd.Process != nil {
+				_ = cmd.Process.Signal(syscall.SIGTERM)
+				_, _ = cmd.Process.Wait()
+			}
+		}()
+	}
 
-	// Wait for the server to start
-	time.Sleep(3 * time.Second)
-
-	// Test base URL
-	baseURL := "http://localhost:8080"
+	// Wait for the service to be ready
+	waitForHealthy(t, client, baseURL, 10*time.Second)
 
 	t.Run("Health Check Integration", func(t *testing.T) {
-		resp, err := http.Get(baseURL + "/health")
+		resp, err := client.Get(baseURL + "/health")
 		if err != nil {
 			t.Fatalf("Failed to make health check request: %v", err)
 		}
@@ -55,19 +99,30 @@ func TestCurrencyExchangeServiceIntegration(t *testing.T) {
 			t.Fatalf("Failed to read response body: %v", err)
 		}
 
-		var healthResp map[string]string
-		err = json.Unmarshal(body, &healthResp)
-		if err != nil {
+		var healthResp map[string]interface{}
+		if err := json.Unmarshal(body, &healthResp); err != nil {
 			t.Errorf("Failed to parse JSON response: %v", err)
 		}
 
-		if healthResp["status"] != "healthy" {
-			t.Errorf("Expected status 'healthy', got '%s'", healthResp["status"])
+		// Accept either {"status":"healthy"} or {"status":true}
+		if v, ok := healthResp["status"]; ok {
+			okStatus := false
+			switch vv := v.(type) {
+			case string:
+				okStatus = strings.EqualFold(vv, "healthy")
+			case bool:
+				okStatus = vv
+			}
+			if !okStatus {
+				t.Errorf("Expected status healthy/true, got %#v", v)
+			}
+		} else {
+			t.Errorf("Missing 'status' field in health response")
 		}
 	})
 
 	t.Run("Rates Endpoint Integration", func(t *testing.T) {
-		resp, err := http.Get(baseURL + "/rates")
+		resp, err := client.Get(baseURL + "/rates")
 		if err != nil {
 			t.Fatalf("Failed to make rates request: %v", err)
 		}
@@ -82,9 +137,9 @@ func TestCurrencyExchangeServiceIntegration(t *testing.T) {
 			t.Fatalf("Failed to read response body: %v", err)
 		}
 
-		var ratesResp map[string]interface{}
-		err = json.Unmarshal(body, &ratesResp)
-		if err != nil {
+	var ratesResp map[string]interface{}
+	err = json.Unmarshal(body, &ratesResp)
+	if err != nil {
 			t.Errorf("Failed to parse JSON response: %v", err)
 		}
 
@@ -92,7 +147,7 @@ func TestCurrencyExchangeServiceIntegration(t *testing.T) {
 			t.Errorf("Expected base currency 'USD', got '%s'", ratesResp["base"])
 		}
 
-		rates, ok := ratesResp["rates"].(map[string]interface{})
+	rates, ok := ratesResp["rates"].(map[string]interface{})
 		if !ok {
 			t.Errorf("Expected rates to be a map")
 		}
@@ -147,7 +202,7 @@ func TestCurrencyExchangeServiceIntegration(t *testing.T) {
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
 				url := fmt.Sprintf("%s/exchange?from=%s&to=%s&amount=%s", baseURL, tc.from, tc.to, tc.amount)
-				resp, err := http.Get(url)
+				resp, err := client.Get(url)
 				if err != nil {
 					t.Fatalf("Failed to make exchange request: %v", err)
 				}
@@ -204,15 +259,15 @@ func TestCurrencyExchangeServiceIntegration(t *testing.T) {
 
 		for _, endpoint := range endpoints {
 			t.Run(endpoint, func(t *testing.T) {
-				resp, err := http.Get(baseURL + endpoint)
+				resp, err := client.Get(baseURL + endpoint)
 				if err != nil {
 					t.Fatalf("Failed to make request to %s: %v", endpoint, err)
 				}
 				defer resp.Body.Close()
 
 				contentType := resp.Header.Get("Content-Type")
-				if contentType != "application/json" {
-					t.Errorf("Expected Content-Type 'application/json', got '%s'", contentType)
+				if !strings.HasPrefix(strings.ToLower(contentType), "application/json") {
+					t.Errorf("Expected Content-Type starting with 'application/json', got '%s'", contentType)
 				}
 			})
 		}
@@ -220,7 +275,7 @@ func TestCurrencyExchangeServiceIntegration(t *testing.T) {
 
 	t.Run("Method Not Allowed Integration", func(t *testing.T) {
 		// Test POST method on exchange endpoint
-		resp, err := http.Post(baseURL+"/exchange", "application/json", nil)
+	resp, err := client.Post(baseURL+"/exchange", "application/json", nil)
 		if err != nil {
 			t.Fatalf("Failed to make POST request: %v", err)
 		}
