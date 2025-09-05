@@ -30,12 +30,11 @@ pipeline {
                     "Integration Tests": {
                         echo "=== Running Integration Tests ==="
                         sh """
-                        go build -o app .
-                        ./app &
-                        APP_PID=$!
-                        sleep 2
+                        docker run -d --name test-app -p 8080:8080 my-app:latest
+                        sleep 3
                         INTEGRATION=1 go test -run TestIntegrationOnly -v
-                        kill $APP_PID
+                        docker stop test-app
+                        docker rm test-app
                         """
                     },
                     "Coverage": {
