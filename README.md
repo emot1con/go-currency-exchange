@@ -212,6 +212,57 @@ docker build -t currency-exchange .
 docker run -p 8080:8080 currency-exchange
 ```
 
+### Testing Docker Setup
+
+Use the provided test script to verify Docker setup locally:
+
+```bash
+./test_docker.sh
+```
+
+This script will:
+- Build a fresh Docker image
+- Start the container
+- Run health checks
+- Execute integration tests
+- Clean up resources
+
+## CI/CD Pipeline
+
+The project includes a Jenkins pipeline (`Jenkinsfile`) that runs:
+
+1. **Checkout**: Retrieves source code and verifies Go installation
+2. **Tests** (parallel execution):
+   - Unit Tests: Core functionality testing
+   - Benchmark Tests: Performance measurements
+   - Integration Tests: End-to-end testing with Docker
+   - Coverage: Code coverage analysis
+3. **Build Binary**: Compiles the Go application
+4. **Build Docker Image**: Creates containerized version
+5. **Push Docker Image**: Publishes to Docker registry
+
+### Jenkins Pipeline Features
+
+- **Fresh Docker builds**: Each test run uses a newly built image
+- **Robust health checks**: Waits for service readiness before testing
+- **Comprehensive logging**: Container logs and detailed error reporting
+- **Automatic cleanup**: Ensures resources are cleaned up even on failure
+- **Parallel execution**: Multiple test types run simultaneously for efficiency
+
+### Troubleshooting Integration Tests
+
+If integration tests fail:
+
+1. Check container logs: `docker logs currency-exchange-test`
+2. Verify port availability: `netstat -tlnp | grep 8080`
+3. Test health endpoint manually: `curl http://localhost:8080/health`
+4. Run the local test script: `./test_docker.sh`
+
+Common issues:
+- **Port conflicts**: Ensure port 8080 is available
+- **Container startup time**: Service needs time to initialize
+- **Network connectivity**: Verify localhost/127.0.0.1 accessibility
+
 ## Contributing
 
 1. Fork the repository

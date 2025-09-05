@@ -27,31 +27,51 @@ func newLocalClient() *http.Client {
 // waitForHealthy polls /health until the service reports healthy or timeout.
 func waitForHealthy(t *testing.T, client *http.Client, baseURL string, timeout time.Duration) {
 	deadline := time.Now().Add(timeout)
+	var lastErr error
+	var lastStatus int
+	var lastBody string
+	
 	for time.Now().Before(deadline) {
 		resp, err := client.Get(baseURL + "/health")
-		if err == nil && resp != nil {
-			body, _ := io.ReadAll(resp.Body)
-			_ = resp.Body.Close()
-			if resp.StatusCode == http.StatusOK {
-				var health map[string]interface{}
-				if json.Unmarshal(body, &health) == nil {
-					if v, ok := health["status"]; ok {
-						switch vv := v.(type) {
-						case string:
-							if strings.EqualFold(vv, "healthy") {
-								return
-							}
-						case bool:
-							if vv {
-								return
-							}
+		if err != nil {
+			lastErr = err
+			time.Sleep(500 * time.Millisecond)
+			continue
+		}
+		
+		body, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		lastStatus = resp.StatusCode
+		lastBody = string(body)
+		
+		if resp.StatusCode == http.StatusOK {
+			var health map[string]interface{}
+			if json.Unmarshal(body, &health) == nil {
+				if v, ok := health["status"]; ok {
+					switch vv := v.(type) {
+					case string:
+						if strings.EqualFold(vv, "healthy") {
+							t.Logf("Service is healthy at %s", baseURL)
+							return
+						}
+					case bool:
+						if vv {
+							t.Logf("Service is healthy at %s", baseURL)
+							return
 						}
 					}
 				}
 			}
 		}
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 	}
+	
+	// Log detailed error information
+	t.Logf("Service health check details:")
+	t.Logf("  URL: %s/health", baseURL)
+	t.Logf("  Last error: %v", lastErr)
+	t.Logf("  Last status code: %d", lastStatus)
+	t.Logf("  Last response body: %s", lastBody)
 	t.Fatalf("service did not become healthy at %s within %s", baseURL, timeout)
 }
 
@@ -81,7 +101,8 @@ func TestCurrencyExchangeServiceIntegration(t *testing.T) {
 	}
 
 	// Wait for the service to be ready
-	waitForHealthy(t, client, baseURL, 10*time.Second)
+	t.Logf("Waiting for service at %s to become healthy...", baseURL)
+	waitForHealthy(t, client, baseURL, 30*time.Second)
 
 	t.Run("Health Check Integration", func(t *testing.T) {
 		resp, err := client.Get(baseURL + "/health")
@@ -128,19 +149,21 @@ func TestCurrencyExchangeServiceIntegration(t *testing.T) {
 		}
 		defer resp.Body.Close()
 
-		if resp.StatusCode != http.StatusOK {
-			t.Errorf("Expected status code %d, got %d", http.StatusOK, resp.StatusCode)
-		}
-
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			t.Fatalf("Failed to read response body: %v", err)
 		}
 
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("Expected status code %d, got %d. Response body: %s", http.StatusOK, resp.StatusCode, string(body))
+			return
+		}
+
 		var ratesResp map[string]interface{}
 		err = json.Unmarshal(body, &ratesResp)
 		if err != nil {
-			t.Errorf("Failed to parse JSON response: %v", err)
+			t.Errorf("Failed to parse JSON response: %v. Response body: %s", err, string(body))
+			return
 		}
 
 		if ratesResp["base"] != "USD" {
@@ -208,20 +231,22 @@ func TestCurrencyExchangeServiceIntegration(t *testing.T) {
 				}
 				defer resp.Body.Close()
 
-				if resp.StatusCode != tc.expectedStatus {
-					t.Errorf("Expected status code %d, got %d", tc.expectedStatus, resp.StatusCode)
-				}
-
 				body, err := io.ReadAll(resp.Body)
 				if err != nil {
 					t.Fatalf("Failed to read response body: %v", err)
+				}
+
+				if resp.StatusCode != tc.expectedStatus {
+					t.Errorf("Expected status code %d, got %d. Response body: %s", tc.expectedStatus, resp.StatusCode, string(body))
+					return
 				}
 
 				if tc.expectedStatus == http.StatusOK {
 					var exchangeResp service.ExchangeResponse
 					err = json.Unmarshal(body, &exchangeResp)
 					if err != nil {
-						t.Errorf("Failed to parse JSON response: %v", err)
+						t.Errorf("Failed to parse JSON response: %v. Response body: %s", err, string(body))
+						return
 					}
 
 					if exchangeResp.From != tc.from {
@@ -243,7 +268,8 @@ func TestCurrencyExchangeServiceIntegration(t *testing.T) {
 					var errorResp service.ErrorResponse
 					err = json.Unmarshal(body, &errorResp)
 					if err != nil {
-						t.Errorf("Failed to parse error response: %v", err)
+						t.Errorf("Failed to parse error response: %v. Response body: %s", err, string(body))
+						return
 					}
 
 					if errorResp.Error == "" {
@@ -265,6 +291,13 @@ func TestCurrencyExchangeServiceIntegration(t *testing.T) {
 				}
 				defer resp.Body.Close()
 
+				body, _ := io.ReadAll(resp.Body)
+				
+				if resp.StatusCode != http.StatusOK {
+					t.Errorf("Expected status code %d, got %d. Response body: %s", http.StatusOK, resp.StatusCode, string(body))
+					return
+				}
+
 				contentType := resp.Header.Get("Content-Type")
 				if !strings.HasPrefix(strings.ToLower(contentType), "application/json") {
 					t.Errorf("Expected Content-Type starting with 'application/json', got '%s'", contentType)
@@ -281,19 +314,21 @@ func TestCurrencyExchangeServiceIntegration(t *testing.T) {
 		}
 		defer resp.Body.Close()
 
-		if resp.StatusCode != http.StatusMethodNotAllowed {
-			t.Errorf("Expected status code %d, got %d", http.StatusMethodNotAllowed, resp.StatusCode)
-		}
-
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			t.Fatalf("Failed to read response body: %v", err)
 		}
 
+		if resp.StatusCode != http.StatusMethodNotAllowed {
+			t.Errorf("Expected status code %d, got %d. Response body: %s", http.StatusMethodNotAllowed, resp.StatusCode, string(body))
+			return
+		}
+
 		var errorResp service.ErrorResponse
 		err = json.Unmarshal(body, &errorResp)
 		if err != nil {
-			t.Errorf("Failed to parse error response: %v", err)
+			t.Errorf("Failed to parse error response: %v. Response body: %s", err, string(body))
+			return
 		}
 
 		if errorResp.Error != "Only GET method is allowed" {

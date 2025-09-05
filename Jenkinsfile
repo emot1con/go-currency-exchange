@@ -30,13 +30,33 @@ pipeline {
                     "Integration Tests": {
                         echo "=== Running Integration Tests ==="
                         sh """
-                          docker stop currency-exchange-test
-                        docker rm currency-exchange-test
-                        docker run -d --name currency-exchange-test -p 8080:8080 numpyh/currency-exchange:jenkins-test-go-pipeline-21
-                        sleep 3
+                        # Clean up any existing container
+                        docker stop currency-exchange-test || true
+                        docker rm currency-exchange-test || true
+                        
+                        # Build a local image for testing
+                        docker build -t currency-exchange-test:latest .
+                        
+                        # Run the container
+                        docker run -d --name currency-exchange-test -p 8080:8080 currency-exchange-test:latest
+                        
+                        # Wait longer for the service to be ready
+                        echo "Waiting for service to start..."
+                        sleep 10
+                        
+                        # Check if container is running
+                        docker ps | grep currency-exchange-test
+                        
+                        # Check container logs for any startup issues
+                        echo "=== Container Logs ==="
+                        docker logs currency-exchange-test
+                        
+                        # Test if the service is responding
+                        echo "=== Testing Service Health ==="
+                        curl -f http://localhost:8080/health || echo "Health check failed"
+                        
+                        # Run integration tests
                         INTEGRATION=1 go test -run TestIntegrationOnly -v
-                        docker stop currency-exchange-test
-                        docker rm currency-exchange-test
                         """
                     },
                     "Coverage": {
@@ -44,6 +64,15 @@ pipeline {
                         sh "go test ./internal/service -cover"
                     }
                 )
+            }
+            post {
+                always {
+                    sh """
+                    # Clean up container regardless of test outcome
+                    docker stop currency-exchange-test || true
+                    docker rm currency-exchange-test || true
+                    """
+                }
             }
         }
 
