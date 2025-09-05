@@ -130,4 +130,16 @@ pipeline {
             }
         }
     }
+
+    post {
+        always {
+            echo "Pipeline Completed"
+        }
+        success {
+            echo "Pipeline Succeeded"
+        }
+        failure {
+            echo "Pipeline Failed"
+        }
+    }
 }
