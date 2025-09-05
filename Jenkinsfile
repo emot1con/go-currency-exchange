@@ -28,7 +28,7 @@ pipeline {
                         echo "=== Running Benchmark Tests ==="
                         sh "go test ./internal/service -bench=. -benchmem"
                     },
-                                        "Integration Tests": {
+                    "Integration Tests": {
                                                 echo "=== Running Integration Tests ==="
                                                 sh """
                                                 set -euxo pipefail
