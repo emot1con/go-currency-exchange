@@ -30,7 +30,7 @@ func waitForHealthy(t *testing.T, client *http.Client, baseURL string, timeout t
 	var lastErr error
 	var lastStatus int
 	var lastBody string
-	
+
 	for time.Now().Before(deadline) {
 		resp, err := client.Get(baseURL + "/health")
 		if err != nil {
@@ -38,12 +38,12 @@ func waitForHealthy(t *testing.T, client *http.Client, baseURL string, timeout t
 			time.Sleep(500 * time.Millisecond)
 			continue
 		}
-		
+
 		body, _ := io.ReadAll(resp.Body)
 		_ = resp.Body.Close()
 		lastStatus = resp.StatusCode
 		lastBody = string(body)
-		
+
 		if resp.StatusCode == http.StatusOK {
 			var health map[string]interface{}
 			if json.Unmarshal(body, &health) == nil {
@@ -65,7 +65,7 @@ func waitForHealthy(t *testing.T, client *http.Client, baseURL string, timeout t
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
-	
+
 	// Log detailed error information
 	t.Logf("Service health check details:")
 	t.Logf("  URL: %s/health", baseURL)
@@ -292,7 +292,7 @@ func TestCurrencyExchangeServiceIntegration(t *testing.T) {
 				defer resp.Body.Close()
 
 				body, _ := io.ReadAll(resp.Body)
-				
+
 				if resp.StatusCode != http.StatusOK {
 					t.Errorf("Expected status code %d, got %d. Response body: %s", http.StatusOK, resp.StatusCode, string(body))
 					return
