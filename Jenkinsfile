@@ -104,12 +104,12 @@ pipeline {
             }
         }
 
-        stage("Build Binary") {
-            steps {
-                echo "=== Building Go Application ==="
-                sh "go build -o currency-exchange ./cmd"
-            }
-        }
+        // stage("Build Binary") {
+        //     steps {
+        //         echo "=== Building Go Application ==="
+        //         sh "go build -o currency-exchange ./cmd"
+        //     }
+        // }
 
         stage("Build Docker Image") {
             steps {
