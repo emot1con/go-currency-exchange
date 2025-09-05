@@ -137,9 +137,9 @@ func TestCurrencyExchangeServiceIntegration(t *testing.T) {
 			t.Fatalf("Failed to read response body: %v", err)
 		}
 
-	var ratesResp map[string]interface{}
-	err = json.Unmarshal(body, &ratesResp)
-	if err != nil {
+		var ratesResp map[string]interface{}
+		err = json.Unmarshal(body, &ratesResp)
+		if err != nil {
 			t.Errorf("Failed to parse JSON response: %v", err)
 		}
 
@@ -147,7 +147,7 @@ func TestCurrencyExchangeServiceIntegration(t *testing.T) {
 			t.Errorf("Expected base currency 'USD', got '%s'", ratesResp["base"])
 		}
 
-	rates, ok := ratesResp["rates"].(map[string]interface{})
+		rates, ok := ratesResp["rates"].(map[string]interface{})
 		if !ok {
 			t.Errorf("Expected rates to be a map")
 		}
@@ -275,7 +275,7 @@ func TestCurrencyExchangeServiceIntegration(t *testing.T) {
 
 	t.Run("Method Not Allowed Integration", func(t *testing.T) {
 		// Test POST method on exchange endpoint
-	resp, err := client.Post(baseURL+"/exchange", "application/json", nil)
+		resp, err := client.Post(baseURL+"/exchange", "application/json", nil)
 		if err != nil {
 			t.Fatalf("Failed to make POST request: %v", err)
 		}
