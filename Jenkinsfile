@@ -29,14 +29,39 @@ pipeline {
                         sh "go test ./internal/service -bench=. -benchmem"
                     },
                                         "Integration Tests": {
-                                            echo "=== Running Integration Tests ==="
-                                            sh """
-                                            docker rm -f currency-exchange-test || true
-                                            docker run -d --name currency-exchange-test -p 18080:8080 numpyh/currency-exchange:jenkins-test-go-pipeline-21
-                                            sleep 3
-                                            BASE_URL=http://127.0.0.1:18080 INTEGRATION=1 go test -run TestIntegrationOnly -v
-                                            docker rm -f currency-exchange-test || true
-                                            """
+                                                echo "=== Running Integration Tests ==="
+                                                sh """
+                                                set -euxo pipefail
+                                                # Start fresh container on a non-conflicting host port
+                                                docker rm -f currency-exchange-test || true
+                                                docker run -d --name currency-exchange-test -p 18080:8080 numpyh/currency-exchange:jenkins-test-go-pipeline-21
+
+                                                # Wait for readiness via health endpoint (bypass proxies)
+                                                READY=""
+                                                for i in $(seq 1 60); do
+                                                    if curl -fsS --noproxy '*' http://127.0.0.1:18080/health | grep -qi healthy; then
+                                                        READY=1; break
+                                                    fi
+                                                    sleep 1
+                                                done
+                                                if [ -z "$READY" ]; then
+                                                    echo "Service did not become healthy in time. Container logs:" >&2
+                                                    docker logs currency-exchange-test || true
+                                                    docker rm -f currency-exchange-test || true
+                                                    exit 1
+                                                fi
+
+                                                # Run integration tests pointing to the container
+                                                BASE_URL=http://127.0.0.1:18080 INTEGRATION=1 go test -run TestIntegrationOnly -v || {
+                                                    echo "Integration tests failed. Container logs:" >&2
+                                                    docker logs currency-exchange-test || true
+                                                    docker rm -f currency-exchange-test || true
+                                                    exit 1
+                                                }
+
+                                                # Cleanup
+                                                docker rm -f currency-exchange-test || true
+                                                """
                                         },
                     "Coverage": {
                         echo "Running Code Coverage"
