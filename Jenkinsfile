@@ -30,6 +30,8 @@ pipeline {
                     "Integration Tests": {
                         echo "=== Running Integration Tests ==="
                         sh """
+                          docker stop currency-exchange-test
+                        docker rm currency-exchange-test
                         docker run -d --name currency-exchange-test -p 8080:8080 numpyh/currency-exchange:jenkins-test-go-pipeline-21
                         sleep 3
                         INTEGRATION=1 go test -run TestIntegrationOnly -v
