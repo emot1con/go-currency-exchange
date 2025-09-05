@@ -30,7 +30,7 @@ pipeline {
                     "Integration Tests": {
                         echo "=== Running Integration Tests ==="
                         sh "INTEGRATION=1 go test -run TestIntegrationOnly -v"
-                    }
+                    },
                     "Coverage": {
                         echo "Running Code Coverage"
                         sh "go test ./internal/service -cover"
