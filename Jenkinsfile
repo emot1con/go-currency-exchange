@@ -32,9 +32,9 @@ pipeline {
                                             echo "=== Running Integration Tests ==="
                                             sh """
                                             docker rm -f currency-exchange-test || true
-                                            docker run -d --name currency-exchange-test -p 8080:8080 numpyh/currency-exchange:jenkins-test-go-pipeline-21
+                                            docker run -d --name currency-exchange-test -p 18080:8080 numpyh/currency-exchange:jenkins-test-go-pipeline-21
                                             sleep 3
-                                            BASE_URL=http://127.0.0.1:8080 INTEGRATION=1 go test -run TestIntegrationOnly -v
+                                            BASE_URL=http://127.0.0.1:18080 INTEGRATION=1 go test -run TestIntegrationOnly -v
                                             docker rm -f currency-exchange-test || true
                                             """
                                         },
