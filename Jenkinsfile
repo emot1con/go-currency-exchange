@@ -49,7 +49,7 @@ pipeline {
         stage("Build Docker Image") {
             steps {
                 script {
-                    dockerImage = docker.build("numpyh/currency-exchange:${env.GIT_COMMIT}")
+                    dockerImage = docker.build("numpyh/currency-exchange:${env.BUILD_TAG}")
                 }
             }
         }
