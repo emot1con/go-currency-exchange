@@ -29,7 +29,14 @@ pipeline {
                     },
                     "Integration Tests": {
                         echo "=== Running Integration Tests ==="
-                        sh "INTEGRATION=1 go test -run TestIntegrationOnly -v"
+                        sh """
+                        go build -o app .
+                        ./app &
+                        APP_PID=$!
+                        sleep 2
+                        INTEGRATION=1 go test -run TestIntegrationOnly -v
+                        kill $APP_PID
+                        """
                     },
                     "Coverage": {
                         echo "Running Code Coverage"
