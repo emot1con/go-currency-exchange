@@ -16,19 +16,19 @@ pipeline {
             }
         }
 
-        stage("Tests") {
+        stage("Test") {
             steps {
                 parallel(
-                    "Unit Tests": {
-                        echo "=== Running Unit Tests ==="
+                    "Unit Test": {
+                        echo "=== Running Unit Test ==="
                         sh "go test ./internal/service -v"
                     },
-                    "Benchmark Tests": {
-                        echo "=== Running Benchmark Tests ==="
+                    "Benchmark Test": {
+                        echo "=== Running Benchmark Test ==="
                         sh "go test ./internal/service -bench=. -benchmem"
                     },
-                    "Integration Tests": {
-                        echo "=== Running Integration Tests ==="
+                    "Integration Test": {
+                        echo "=== Running Integration Test ==="
                         script {
                             try {
                                 // Create a Docker network for test isolation
@@ -40,7 +40,7 @@ pipeline {
                                 sh "docker build -t currency-exchange-test:${env.BUILD_NUMBER} ."
                                 
                                 // Start container for testing on the test network
-                                echo "Starting container for integration tests..."
+                                echo "Starting container for integration test..."
                                 sh """
                                 docker run -d --name currency-exchange-test-${env.BUILD_NUMBER} \
                                     --network test-network-${env.BUILD_NUMBER} \
@@ -58,8 +58,8 @@ pipeline {
                                 }
                                 """
                                 
-                                // Run integration tests in a container on the same network
-                                echo "Running integration tests..."
+                                // Run integration test in a container on the same network
+                                echo "Running integration test..."
                                 sh """
                                 docker run --rm --network test-network-${env.BUILD_NUMBER} \
                                     -v \$(pwd):/workspace \
@@ -71,7 +71,7 @@ pipeline {
                                 """
                                 
                             } catch (Exception e) {
-                                echo "Integration tests failed: ${e.getMessage()}"
+                                echo "Integration test failed: ${e.getMessage()}"
                                 // Show container logs for debugging
                                 sh "docker logs currency-exchange-test-${env.BUILD_NUMBER} || true"
                                 throw e
