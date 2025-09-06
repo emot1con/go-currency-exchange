@@ -95,18 +95,20 @@ pipeline{
             }
         }
 
-        stage("Build Docker Image") {
-            steps {
-                script {
+        stage("Build Docker Image"){
+            steps{
+                script{
+                echo "Build Docker Image"
                     dockerImage = docker.build("numpyh/currency-exchange:${env.BUILD_TAG}")
                 }
             }
         }
 
-        stage("Push Docker Image") {
-            steps {
-                script {
-                    docker.withRegistry('', 'dockerhub') {
+        stage("Push Docker Image"){
+            steps{
+                script{
+                echo "Push Docker Image"
+                    docker.withRegistry('', 'dockerhub'){
                         dockerImage.push()
                         dockerImage.push('latest')
                     }
