@@ -130,9 +130,9 @@ pipeline {
             }
         }
 
-        stage("Deploy to Kubernetes"){
-            steps{}
-        }
+        // stage("Deploy to Kubernetes"){
+        //     steps{}
+        // }
     }
 
     post {
