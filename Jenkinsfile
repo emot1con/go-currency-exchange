@@ -18,7 +18,7 @@ pipeline{
 
         stage("Test"){
             steps{
-                parallel{
+                parallel(
                     "Unit Test":{
                         echo "Unit Test"
                         sh "go test ./internal/service -v"
@@ -91,7 +91,7 @@ pipeline{
                         echo "Coverage Test"
                         sh "go test ./internal/service -cover "
                     }
-                }
+                )
             }
         }
 
