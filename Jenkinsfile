@@ -1,33 +1,32 @@
-pipeline {
+pipeline{
     agent any
 
-    environment {
-        goHome = tool 'myGo'
-        PATH   = "${goHome}/bin:${env.PATH}"
+    environment{
+        myGo = tool 'myGo'
+        PATH = "${myGo}/bin:${env.PATH}"
     }
 
-    stages {
-        stage("Checkout") {
-            steps {
-                echo "=== Checkout Source Code ==="
-                sh "go version"
-                sh "echo PATH - $PATH"
-                sh "echo BUILD_NUMBER - $env.BUILD_NUMBER"
+    stages{
+        stage("Checkout"){
+            steps{
+                echo "Checkout Source Code"
+                echo "PATH: ${env.PATH}"
+                echo "Go Version: ${sh(script: 'go version', returnStdout: true).trim()}"
+                echo "BUIILD_NUMBER: ${env.BUILD_NUMBER}"
             }
         }
 
-        stage("Test") {
-            steps {
-                parallel(
-                    "Unit Test": {
-                        echo "=== Running Unit Test ==="
-                        sh "go test ./internal/service -v"
-                    },
-                    "Benchmark Test": {
-                        echo "=== Running Benchmark Test ==="
-                        sh "go test ./internal/service -bench=. -benchmem"
-                    },
-                    "Integration Test": {
+        stage("Test"){
+            parallel{
+                "Unit Test"{
+                    echo "Unit Test"
+                    sh "go test ./internal/service -v"
+                },
+                "Benchmark Test"{
+                    echo "Benchmark Test"
+                    sh "go test -bench=. ./internal/service -v"
+                },
+                "Integration Test": {
                         echo "=== Running Integration Test ==="
                         script {
                             try {
@@ -86,59 +85,40 @@ pipeline {
                                 """
                             }
                         }
-                    },
-                    "Coverage": {
-                        echo "Running Code Coverage"
-                        sh "go test ./internal/service -cover"
-                    }
-                )
-            }
-            post {
-                always {
-                    sh """
-                    # Clean up container regardless of test outcome
-                    docker stop currency-exchange-test || true
-                    docker rm currency-exchange-test || true
-                    """
+                },
+                "Coverage Test"{
+                    echo "Coverage Test"
+                    sh "go test ./internal/service -cover "
                 }
             }
         }
 
-        // stage("Build Binary") {
-        //     steps {
-        //         echo "=== Building Go Application ==="
-        //         sh "go build -o currency-exchange ./cmd"
-        //     }
-        // }
-
-        stage("Build Docker Image") {
-            steps {
-                script {
-                    dockerImage = docker.build("numpyh/currency-exchange:${env.BUILD_TAG}")
-                }
+        stage("Build Docker Image"){
+            steps{
+                echo "Build Docker Image"
+                dockerImage = docker.build("numpy/currency-exchange:${env.BUILD_NUMBER}")
             }
         }
 
-        stage("Push Docker Image") {
-            steps {
-                script {
-                    docker.withRegistry('', 'dockerhub') {
-                        dockerImage.push()
-                        dockerImage.push('latest')
-                    }
+        stage("Push Docker Image"){
+            steps{
+                echo "Push Docker Image"
+                docker.withRegistry("", "dockerhub"){
+                    dockerImage.push()
+                    dockerImage.push('latest')
                 }
             }
         }
     }
 
-    post {
-        always {
+    post{
+        always{
             echo "Pipeline Completed"
         }
-        success {
+        success{
             echo "Pipeline Succeeded"
         }
-        failure {
+        failure{
             echo "Pipeline Failed"
         }
     }
