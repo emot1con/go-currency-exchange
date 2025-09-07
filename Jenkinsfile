@@ -134,7 +134,7 @@ pipeline {
             steps {
                 script {
                     withKubeConfig([credentialsId: 'kubeconfig-jenkins']) {
-                        sh "kubectl get pods"
+                        sh "kubectl get pods -n staging"
                     }
                 }
             }

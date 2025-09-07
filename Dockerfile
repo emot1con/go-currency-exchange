@@ -1,29 +1,16 @@
-# Build stage
-FROM golang:1.24-alpine AS builder
+FROM jenkins/jenkins:lts
 
-WORKDIR /app
+USER root
 
-# Copy go mod files
-COPY go.mod go.sum ./
-RUN go mod download
+# Install kubectl
+RUN apt-get update && apt-get install -y curl gnupg lsb-release \
+    && curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+    && install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl \
+    && rm kubectl
 
-# Copy source code
-COPY . .
+# Install Docker CLI
+RUN curl -fsSL https://get.docker.com/rootless | sh || true \
+    && apt-get update && apt-get install -y docker.io \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main cmd/main.go
-
-# Final stage
-FROM alpine:latest
-
-RUN apk --no-cache add ca-certificates
-WORKDIR /app/
-
-# Copy the binary from builder stage
-COPY --from=builder /app/main .
-
-# Expose port
-EXPOSE 8080
-
-# Command to run
-CMD ["./main"]
+USER jenkins
