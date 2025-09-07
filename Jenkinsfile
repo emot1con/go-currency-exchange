@@ -134,7 +134,8 @@ pipeline {
             steps {
                 script {
                     withKubeConfig([credentialsId: 'kubeconfig-jenkins']) {
-                        sh "kubectl get pods -n staging"
+                        sh "kubectl set image deployment/currency-exchange currency-exchange=numpyh/currency-exchange:${env.BUILD_TAG} --record -n staging"
+                        sh "kubectl rollout status deployment/currency-exchange -n staging"
                     }
                 }
             }
