@@ -130,9 +130,11 @@ pipeline {
             }
         }
 
-        // stage("Deploy to Kubernetes"){
-        //     steps{}
-        // }
+        stage("Deploy to Kubernetes"){
+            steps{
+                sh "kubectl get pods"
+            }
+        }
     }
 
     post {

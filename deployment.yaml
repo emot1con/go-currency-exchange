@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: currency-exchange
+  name: currency-exchange
+  namespace: staging
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: currency-exchange
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: currency-exchange
+    spec:
+      containers:
+      - image: numpyh/currency-exchange:jenkins-test-go-pipeline-73
+        name: currency-exchange
+        ports:
+        - containerPort: 8080
+        resources: {}
+status: {}
+
+--- 
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: currency-exchange
+  name: currency-exchange
+  namespace: staging
+spec:
+  ports:
+  - name: 8082-8080
+    port: 8082
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: currency-exchange
+  type: LoadBalancer
+status:
+  loadBalancer: {}
