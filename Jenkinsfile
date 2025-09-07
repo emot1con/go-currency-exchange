@@ -93,15 +93,15 @@ pipeline {
                     }
                 )
             }
-            post {
-                always {
-                    sh """
-                    # Clean up container regardless of test outcome
-                    docker stop currency-exchange-test || true
-                    docker rm currency-exchange-test || true
-                    """
-                }
-            }
+            // post {
+            //     always {
+            //         sh """
+            //         # Clean up container regardless of test outcome
+            //         docker stop currency-exchange-test || true
+            //         docker rm currency-exchange-test || true
+            //         """
+            //     }
+            // }
         }
 
         // stage("Build Binary") {
