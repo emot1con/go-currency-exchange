@@ -39,8 +39,7 @@ spec:
     port: 8082
     protocol: TCP
     targetPort: 8080
+    NodePort: 30082
   selector:
     app: currency-exchange
-  type: LoadBalancer
-status:
-  loadBalancer: {}
+  type: NodePort
