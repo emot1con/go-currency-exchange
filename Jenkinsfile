@@ -133,7 +133,7 @@ pipeline {
         stage("Deploy to Kubernetes"){
             steps{
                 script{
-                    withKubeConfig([credentialsId: 'kubeconfig-staging']){
+                    withKubeConfig([credentialsId: 'kubeconfig-jenkins']){
                         sh "kubectl get pods"
                     }
                 }
