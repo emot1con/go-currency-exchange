@@ -17,7 +17,7 @@ spec:
         app: currency-exchange
     spec:
       containers:
-      - image: numpyh/currency-exchange:jenkins-test-go-pipeline-73
+      - image: numpyh/currency-exchange:latest
         name: currency-exchange
         ports:
         - containerPort: 8080
