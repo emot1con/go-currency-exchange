@@ -10,15 +10,17 @@ import (
 
 // ExchangeRates holds the conversion rates from USD to other currencies
 var ExchangeRates = map[string]float64{
-	"USD": 1.0,
-	"GBP": 0.73,
-	"JPY": 110.0,
-	"CAD": 1.25,
-	"AUD": 1.35,
-	"CHF": 0.92,
-	"CNY": 6.45,
-	"INR": 74.5,
-	"BRL": 5.2,
+	"USD":  1.0,
+	"EUR":  0.85,
+	"EURS": 2.00,
+	"GBP":  0.73,
+	"JPY":  110.0,
+	"CAD":  1.25,
+	"AUD":  1.35,
+	"CHF":  0.92,
+	"CNY":  6.45,
+	"INR":  74.5,
+	"BRL":  5.2,
 }
 
 // ExchangeRequest represents the request structure
