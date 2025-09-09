@@ -93,23 +93,7 @@ pipeline {
                     }
                 )
             }
-            // post {
-            //     always {
-            //         sh """
-            //         # Clean up container regardless of test outcome
-            //         docker stop currency-exchange-test || true
-            //         docker rm currency-exchange-test || true
-            //         """
-            //     }
-            // }
         }
-
-        // stage("Build Binary") {
-        //     steps {
-        //         echo "=== Building Go Application ==="
-        //         sh "go build -o currency-exchange ./cmd"
-        //     }
-        // }
 
         stage("Build Docker Image") {
             steps {

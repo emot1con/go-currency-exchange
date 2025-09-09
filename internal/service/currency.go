@@ -11,7 +11,6 @@ import (
 // ExchangeRates holds the conversion rates from USD to other currencies
 var ExchangeRates = map[string]float64{
 	"USD": 1.0,
-	"EUR": 0.85,
 	"GBP": 0.73,
 	"JPY": 110.0,
 	"CAD": 1.25,
