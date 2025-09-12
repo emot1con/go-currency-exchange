@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -10,17 +11,16 @@ import (
 
 // ExchangeRates holds the conversion rates from USD to other currencies
 var ExchangeRates = map[string]float64{
-	"USD":  1.0,
-	"EUR":  0.85,
-	"EURS": 2.00,
-	"GBP":  0.73,
-	"JPY":  110.0,
-	"CAD":  1.25,
-	"AUD":  1.35,
-	"CHF":  0.92,
-	"CNY":  6.45,
-	"INR":  74.5,
-	"BRL":  5.2,
+	"USD": 1.0,
+	"EUR": 0.85,
+	"GBP": 0.73,
+	"JPY": 110.0,
+	"CAD": 1.25,
+	"AUD": 1.35,
+	"CHF": 0.92,
+	"CNY": 6.45,
+	"INR": 74.5,
+	"BRL": 5.2,
 }
 
 // ExchangeRequest represents the request structure
@@ -94,6 +94,10 @@ func (cs *CurrencyService) ExchangeHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	amount, err := strconv.ParseFloat(amountStr, 64)
+	log.Println("Parsed amount:", amount)
+	log.Println("to:", to)
+	log.Println("from:", from)
+
 	if err != nil || amount <= 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(ErrorResponse{Error: "Invalid amount parameter"})
